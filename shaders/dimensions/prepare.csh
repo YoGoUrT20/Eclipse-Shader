@@ -67,6 +67,79 @@ void main() {
             bool inBoat = vehicleId == ENTITY_BOAT;
 
             bool inShip = false;
+
+            // --- Dropped item water contact detection ---
+            // Step 1: Find a dropped item in the voxel grid
+            bool foundItem = false;
+            int foundDx = 0;
+            int foundDy = 0;
+            int foundDz = 0;
+            {
+                #if !defined IS_LPV_ENABLED && !defined SHADER_GRASS
+                    vec3 rayStart = vec3(0.0);
+                #else
+                    vec3 rayStart = vec3(-relativeEyePosition);
+                #endif
+                vec3 LPVpos = GetLpvPosition(rayStart);
+
+                for (int dx = -2; dx <= 2 && !foundItem; dx++) {
+                    for (int dz = -2; dz <= 2 && !foundItem; dz++) {
+                        for (int dy = 1; dy >= -2 && !foundItem; dy--) {
+                            uint blockID = GetVoxelBlock(ivec3(LPVpos.x + float(dx), LPVpos.y + float(dy), LPVpos.z + float(dz)));
+                            if (blockID == ENTITY_ITEM_DROPPED) {
+                                foundItem = true;
+                                foundDx = dx;
+                                foundDy = dy;
+                                foundDz = dz;
+                            }
+                        }
+                    }
+                }
+
+                // Step 2: If item found, check if it's adjacent to water
+                bool itemTouchingWater = false;
+                if (foundItem) {
+                    ivec3 itemPos = ivec3(LPVpos.x + float(foundDx), LPVpos.y + float(foundDy), LPVpos.z + float(foundDz));
+                    // Check the 6 face-adjacent voxels for water
+                    if (GetVoxelBlock(itemPos + ivec3( 1, 0, 0)) == BLOCK_WATER) itemTouchingWater = true;
+                    if (GetVoxelBlock(itemPos + ivec3(-1, 0, 0)) == BLOCK_WATER) itemTouchingWater = true;
+                    if (GetVoxelBlock(itemPos + ivec3( 0, 1, 0)) == BLOCK_WATER) itemTouchingWater = true;
+                    if (GetVoxelBlock(itemPos + ivec3( 0,-1, 0)) == BLOCK_WATER) itemTouchingWater = true;
+                    if (GetVoxelBlock(itemPos + ivec3( 0, 0, 1)) == BLOCK_WATER) itemTouchingWater = true;
+                    if (GetVoxelBlock(itemPos + ivec3( 0, 0,-1)) == BLOCK_WATER) itemTouchingWater = true;
+                }
+
+                // Step 3: Edge detection — only splash on the frame the item FIRST touches water
+                bool prevTouching = droppedItemPrevFrameSSBO > 0.5;
+                droppedItemPrevFrameSSBO = itemTouchingWater ? 1.0 : 0.0;
+
+                // Rising edge: was NOT touching, now IS touching
+                bool droppedItemSplash = itemTouchingWater && !prevTouching;
+
+                // Store for prepare1/prepare2
+                droppedItemNearWaterSSBO = droppedItemSplash ? 1.0 : 0.0;
+                if (droppedItemSplash) {
+                    #if WATER_SIM_SCALE == 0
+                        float pixelsPerBlock = 20.0;
+                    #else
+                        float pixelsPerBlock = 40.0 * float(WATER_SIM_SCALE);
+                    #endif
+                    // Use exact entity position from shadow pass (stored in droppedItemOffsetX/Z)
+                    // These values are the entity's player-space XZ coordinates written by voxel_write.glsl
+                    float exactEntityX = droppedItemOffsetX;
+                    float exactEntityZ = droppedItemOffsetZ;
+                    // Convert player-space position to pixel offset for the wave sim texture
+                    droppedItemOffsetX = exactEntityX * pixelsPerBlock;
+                    droppedItemOffsetZ = exactEntityZ * pixelsPerBlock;
+                } else {
+                    droppedItemOffsetX = 0.0;
+                    droppedItemOffsetZ = 0.0;
+                }
+            }
+
+            // Use local variable since onWaterSurface is a uniform (read-only)
+            bool droppedItemInWater = droppedItemNearWaterSSBO > 0.5;
+            bool isOnWaterSurface = onWaterSurface || droppedItemInWater;
         #else
             float playerTallness = 1.5;
             if(is_sneaking) playerTallness = 1.2;
@@ -82,7 +155,7 @@ void main() {
 
             // Big shenanigans lol, don't ask, it just works
             bool inShip = false;
-            onWaterSurface = false;
+            bool isOnWaterSurface = false;
             bool inBoat = false;
             bool inBoat2Frames = inBoatLastFrame;
             inBoatLastFrame = inBoatCurrentFrame;
@@ -92,7 +165,7 @@ void main() {
             inShipLastFrame = inShipCurrentFrame;
             inShipCurrentFrame = false;
 
-            if(BlockID1 == BLOCK_WATER || BlockID2 == BLOCK_WATER || BlockID3 == BLOCK_WATER) onWaterSurface = true;
+            if(BlockID1 == BLOCK_WATER || BlockID2 == BLOCK_WATER || BlockID3 == BLOCK_WATER) isOnWaterSurface = true;
 
             if(BlockID1 == ENTITY_BOAT || BlockID2 == ENTITY_BOAT || BlockID3 == ENTITY_BOAT) inBoatCurrentFrame = true;
 
@@ -101,6 +174,9 @@ void main() {
             if(inBoatCurrentFrame || inBoatLastFrame || inBoat2Frames) inBoat = true;
 
             if(inShipCurrentFrame || inShipLastFrame || inShip2Frames) inShip = true;
+
+            // Also detect dropped items in water on legacy path
+            if(BlockID1 == ENTITY_ITEM_DROPPED || BlockID2 == ENTITY_ITEM_DROPPED || BlockID3 == ENTITY_ITEM_DROPPED) isOnWaterSurface = true;
         #endif
 
         vec2 playerMovement = getPlayerMovementOffset();
@@ -113,7 +189,7 @@ void main() {
             water_move_compensation_counter_SSBO -= vec2(offset);
         }
 
-        if (onWaterSurface) {
+        if (isOnWaterSurface) {
             vec3 position = cameraPosition-previousCameraPositionWave;
             #if IRIS_VERSION >= 11004
             if(isRiding) {
@@ -130,7 +206,10 @@ void main() {
 
             float size = 10.0;
             #if IRIS_VERSION >= 11004
-                if(inBoat) {
+                if(droppedItemInWater && !feetInWater && !vehicleInWater) {
+                    // Dropped items make small, constant ripples
+                    size = 5.0;
+                } else if(inBoat) {
                     size += 23.0;
                 } else if (inShip) {
                     size += 61.0 * smoothstep(0.0, 10.0, speed);

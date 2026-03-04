@@ -59,7 +59,9 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
         blockId = blockId % 2000u;
 
         #if IRIS_VERSION < 11004
-            if (blockId == ENTITY_BOAT || blockId == ENTITY_SMALLSHIPS) return BLOCK_EMPTY;
+            if (blockId == ENTITY_BOAT || blockId == ENTITY_SMALLSHIPS || blockId == ENTITY_ITEM_DROPPED) return BLOCK_EMPTY;
+        #else
+            if (blockId == ENTITY_ITEM_DROPPED) return BLOCK_EMPTY;
         #endif
                 
         return blockId;

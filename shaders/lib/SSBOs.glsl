@@ -23,6 +23,11 @@ layout(std430, binding = 4) buffer SSBO1 {
 
     float waterRoundSize;
 
+    float droppedItemNearWaterSSBO; // > 0 if dropped item detected touching water THIS frame
+    float droppedItemOffsetX;       // shadow pass: exact entity X in player space; prepare.csh: pixel offset
+    float droppedItemOffsetZ;       // shadow pass: exact entity Z in player space; prepare.csh: pixel offset
+    float droppedItemPrevFrameSSBO; // > 0 if item was touching water LAST frame (for edge detection)
+
     float lastFrameTimeCount; // 4 bytes
 
     vec3 previousCameraPositionWave; // 12 bytes

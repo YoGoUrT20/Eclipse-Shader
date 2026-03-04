@@ -172,6 +172,7 @@ uniform vec3 sunVec;
 
 #ifdef PHOTONICS
 	#ifdef VOXEL_REFLECTIONS
+		// #define VOXEL_REFLECTIONS
 		#define PHOTONICS_INCLUDED
 
 		#include "/photonics/photonics.glsl"
@@ -967,6 +968,9 @@ uniform float wetness;
 		#endif
 	}
 #endif
+
+uniform ivec3 cameraPositionInt;
+
 
 void main() {
 

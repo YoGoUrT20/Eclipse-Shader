@@ -68,7 +68,12 @@ uniform float frameTimeCounter;
 
 void main() {
     #if WATER_INTERACTION == 2
-    if (abs(frameTimeCounter - lastFrameTimeCount) > WATER_SIM_FRAMETIME && (!noSimOngoing || onWaterSurface)) {
+    #if IRIS_VERSION >= 11004
+        bool isOnWaterSurface = onWaterSurface || droppedItemNearWaterSSBO > 0.5;
+    #else
+        bool isOnWaterSurface = onWaterSurface;
+    #endif
+    if (abs(frameTimeCounter - lastFrameTimeCount) > WATER_SIM_FRAMETIME && (!noSimOngoing || isOnWaterSurface)) {
         // if (frameCounter == 0) return;
         ivec2 imgCoord = ivec2(gl_GlobalInvocationID.xy);
         float dist = length(imgCoord-0.5*resolution);
@@ -121,7 +126,7 @@ void main() {
         pressure *= 0.985 * distFade;
         pVel *= distFade;
 
-        if (onWaterSurface) {
+        if (isOnWaterSurface) {
             #if IRIS_VERSION >= 11004
                 if(isRiding && vehicleId == ENTITY_BOAT) {
                     vec2 p = imgCoord - 0.5 * resolution;
@@ -136,6 +141,11 @@ void main() {
                     float shape = smoothstep(waterRoundSize, 0.7 * waterRoundSize, dist);
 
                     pressure += shape * (smoothstep(-waterRoundSize * 0.75, waterRoundSize * 0.75, t)* 2.0 - 1.0);
+                } else if (droppedItemNearWaterSSBO > 0.5 && !onWaterSurface) {
+                    // Inject pressure at the dropped item's position, not at the player
+                    vec2 itemCenter = 0.5 * resolution + vec2(droppedItemOffsetX, droppedItemOffsetZ);
+                    float itemDist = length(imgCoord - itemCenter);
+                    pressure += smoothstep(waterRoundSize, 0.7 * waterRoundSize, itemDist);
                 } else
             #endif
             {

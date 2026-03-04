@@ -168,14 +168,27 @@ void PopulateShadowVoxel(const in vec3 playerPos) {
 		}
 	#endif
 
-	#if WATER_INTERACTION == 2 && !defined COLORWHEEL && IRIS_VERSION < 11004
+	#if WATER_INTERACTION == 2 && !defined COLORWHEEL
 		if (
 			((renderStage == MC_RENDER_STAGE_ENTITIES && (currentRenderedItemId > 0 || entityId > 0)) || renderStage == MC_RENDER_STAGE_BLOCK_ENTITIES)
 		) {
 			switch (entityId) {
+				#if IRIS_VERSION < 11004
 				case ENTITY_BOAT:
 				case ENTITY_SMALLSHIPS:
+				#endif
+				case ENTITY_ITEM_DROPPED:
 					voxelId = uint(entityId)+2000u;
+					// Store the exact player-space position for sub-block precision splashes
+					if (entityId == ENTITY_ITEM_DROPPED) {
+						#if !defined IS_LPV_ENABLED && !defined SHADER_GRASS
+							droppedItemOffsetX = originPos.x + relativeEyePosition.x;
+							droppedItemOffsetZ = originPos.z + relativeEyePosition.z;
+						#else
+							droppedItemOffsetX = originPos.x;
+							droppedItemOffsetZ = originPos.z;
+						#endif
+					}
 					break;
 			}
 		}

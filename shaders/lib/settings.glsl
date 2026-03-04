@@ -1341,7 +1341,7 @@ const vec3 aerochrome_color = mix(vec3(1.0, 0.0, 0.0), vec3(0.715, 0.303, 0.631)
 #undef CUSTOM_MOON_ROTATION
 #define LIGHTNING_SHADOWS 0
 #undef END_ISLAND_LIGHT
-#if WATER_INTERACTION == 2 && IRIS_VERSION < 11004
+#if WATER_INTERACTION == 2
 	#define WATER_INTERACTION 1
 #endif
 #undef SHADER_GRASS
