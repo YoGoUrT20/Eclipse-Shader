@@ -1,8 +1,9 @@
 {
-    "unusedString": "
+    /*
         #include "/lib/settings.glsl"
         #include "/lib/res_params.glsl"
-    ","version": 1,
+    */
+    "version": 1,
     "opaqueDrawBuffers": [
         1,
         8
@@ -68,15 +69,6 @@
 
         float waterRoundSize;
 
-        uint droppedItemWaterColMask;
-        uint newSplashCount;
-        vec2 exactItemPositions[
-        25
-    ];
-        vec2 newSplashPositions[
-        16
-    ];
-
         float lastFrameTimeCount;
 
         vec3 previousCameraPositionWave;
@@ -122,16 +114,11 @@
         float exposureSSBO;
 
         vec2 rodExposureDepthSSBO;
-}"},"useViewportDims": true,
-"uniforms": [
-    "nightVision",
-    "cloudTime",
-    "noPuddleAreas",
-    "dhVoxyRenderDistance",
-    "worldDay",
-    "worldTime",
-    "moonElevation",
-    "worldTimeSmooth",
+}"},"useViewportDims": true,"uniforms": ["nightVision","cloudTime","noPuddleAreas","dhVoxyRenderDistance",
+"worldDay",
+"worldTime",
+"moonElevation",
+"worldTimeSmooth",
         #if CUMULONIMBUS == 1
         "cumulonimbusStrength",
         #endif
