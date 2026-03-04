@@ -11,7 +11,7 @@ const ivec3 workGroups = ivec3(6, 6, 1);
     const vec3 LightColor_Amethyst = vec3(0.464, 0.227, 0.788);
     const vec3 LightColor_Candles = vec3(1.0, 0.4, 0.1);
     const vec3 LightColor_CopperBulb = vec3(1.0, 0.7, 0.6);
-    const vec3 LightColor_LightBlock = vec3(0.7);
+    const vec3 LightColor_LightBlock = vec3(float(LPV_LIGHTBLOCK_R), float(LPV_LIGHTBLOCK_G), float(LPV_LIGHTBLOCK_B)) / 100.0;
     const vec3 LightColor_RedstoneTorch = vec3(0.939, 0.305, 0.164);
     const vec3 LightColor_SeaPickle = vec3(0.283, 0.394, 0.212);
 
